@@ -24,7 +24,7 @@ const (
 	BSTR  BType = 0x01
 	BINT  BType = 0x02
 	BLIST BType = 0x03
-	BDIST BType = 0x04
+	BDICT BType = 0x04
 )
 
 type BValue interface{}
@@ -55,14 +55,14 @@ func (o *BObject) List() ([]*BObject, error) {
 	return o.val_.([]*BObject), nil
 }
 
-func (o *BObject) Dist() (map[string]*BObject, error) {
-	if o.type_ != BSTR {
+func (o *BObject) Dict() (map[string]*BObject, error) {
+	if o.type_ != BDICT {
 		return nil, ErrTyp
 	}
 	return o.val_.(map[string]*BObject), nil
 }
 
-func (o *BObject) BenCode(w io.Writer) int {
+func (o *BObject) Bencode(w io.Writer) int {
 	bw := bufio.NewWriter(w)
 	wLen := 0
 	switch o.type_ {
@@ -80,16 +80,16 @@ func (o *BObject) BenCode(w io.Writer) int {
 		list, _ := o.List()
 		// 递归下降
 		for _, elem := range list {
-			wLen += elem.BenCode(bw)
+			wLen += elem.Bencode(bw)
 		}
 		_ = bw.WriteByte('e')
 		wLen += 2
-	case BDIST:
+	case BDICT:
 		_ = bw.WriteByte('d')
-		dict, _ := o.Dist()
+		dict, _ := o.Dict()
 		for k, v := range dict {
 			wLen += EncodeString(bw, k)
-			wLen += v.BenCode(bw)
+			wLen += v.Bencode(bw)
 		}
 		if err := bw.WriteByte('e'); err != nil {
 			return 0
@@ -161,7 +161,7 @@ func readDecimal(r *bufio.Reader) (val int, len int) {
 			return 0, 0
 		}
 	}
-	for !checkNum(b) {
+	for checkNum(b) {
 		sb.WriteByte(b)
 		if b, err = r.ReadByte(); err != nil {
 			return 0, 0
