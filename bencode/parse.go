@@ -72,7 +72,7 @@ func Parse(r io.Reader) (*BObject, error) {
 			}
 			dict[key] = val
 		}
-		ret.type_ = BDIST
+		ret.type_ = BDICT
 		ret.val_ = dict
 	default:
 		return nil, ErrIvd
