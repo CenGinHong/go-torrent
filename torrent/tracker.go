@@ -3,9 +3,8 @@ package torrent
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"go-torrent/bencode"
-	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,7 +16,7 @@ const (
 	PeerPort int = 6666
 	IpLen    int = 4
 	PortLen  int = 2
-	PeerLen  int = IpLen + PortLen
+	PeerLen      = IpLen + PortLen
 )
 
 const IDLEN int = 20
@@ -32,16 +31,14 @@ type TrackerResp struct {
 	Peers    string `bencode:"peers"`
 }
 
-func buildUrl(tf *TorrentFile) (string, error) {
-	// 本地客户端的唯一标识，一般回包含版本信息
-	var peerId [20]byte
+func buildUrl(tf *TorrentFile, peerId [IDLEN]byte) (string, error) {
 	if _, err := rand.Read(peerId[:]); err != nil {
 		return "", err
 	}
 	// 转换成url
 	base, err := url.Parse(tf.Announce)
 	if err != nil {
-		fmt.Println("Announce Error: " + tf.Announce)
+		log.Printf("Announce Error: %s\n", tf.Announce)
 		return "", err
 	}
 	// 生成参数
@@ -63,27 +60,27 @@ func buildUrl(tf *TorrentFile) (string, error) {
 	return base.String(), nil
 }
 
-func FindPeers(tf *TorrentFile) []PeerInfo {
-	u, err := buildUrl(tf)
+// FindPeers 找peer的下载地址
+func FindPeers(tf *TorrentFile, peerId [IDLEN]byte) []PeerInfo {
+	u, err := buildUrl(tf, peerId)
 	if err != nil {
-		fmt.Println("Build Tracker Url Error: " + err.Error())
+		log.Printf("Build Tracker Url Error: %v\n", err)
 		return nil
 	}
 	cli := &http.Client{Timeout: 15 * time.Second}
 	// 发送一个http get
 	resp, err := cli.Get(u)
 	if err != nil {
-		fmt.Println("Fail to Connect to Tracker: " + err.Error())
+		log.Printf("Fail to Connect to Tracker: %v\n", err)
 		return nil
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	trackResp := new(TrackerResp)
 	// 是bencode格式，需要unmarshal
-	err = bencode.Unmarshal(resp.Body, trackResp)
-	if err != nil {
-		fmt.Println("Tracker Response Error" + err.Error())
+	if err = bencode.Unmarshal(resp.Body, trackResp); err != nil {
+		log.Printf("Tracker Response Error: %v\n", err)
 		return nil
 	}
 
@@ -92,15 +89,18 @@ func FindPeers(tf *TorrentFile) []PeerInfo {
 
 // 将紧凑排列的信息展开
 func buildPeerInfo(peers []byte) []PeerInfo {
+	// 总长/ 每一位peer的信息位数
 	cnt := len(peers) / PeerLen
+	// 不能整除就有bug
 	if len(peers)%PeerLen != 0 {
-		fmt.Println("Received malformed peers")
+		log.Printf("Received malformed peers")
 		return nil
 	}
 	infos := make([]PeerInfo, cnt)
 	for i := 0; i < cnt; i++ {
 		offset := i * PeerLen
-		infos[i].IP = net.IP(peers[offset : offset+IpLen])
+		infos[i].IP = peers[offset : offset+IpLen]
+		// 大小端转换
 		infos[i].Port = binary.BigEndian.Uint16(peers[offset+IpLen : offset+PeerLen])
 	}
 	return infos

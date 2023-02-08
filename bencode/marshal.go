@@ -121,6 +121,7 @@ func unmarshalDict(p reflect.Value, dict map[string]*BObject) error {
 		}
 		ft := v.Type().Field(i)
 		key := ft.Tag.Get("bencode")
+		// 如果没有tag,使用结构体名字
 		if key == "" {
 			key = strings.ToLower(ft.Name)
 		}

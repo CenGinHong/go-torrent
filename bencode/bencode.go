@@ -110,41 +110,6 @@ func writeDecimal(w *bufio.Writer, val int) (len int) {
 		return 0
 	}
 	return valLen
-	//if val == 0 {
-	//	if err := w.WriteByte('0'); err != nil {
-	//		return 0
-	//	}
-	//	len++
-	//	return
-	//}
-	//if val < 0 {
-	//	if err := w.WriteByte('-'); err != nil {
-	//		return 0
-	//	}
-	//	len++
-	//	val *= -1
-	//}
-	//// 这里是正序拆分
-	//dividend := 1
-	//for {
-	//	if dividend > val {
-	//		dividend /= 10
-	//		break
-	//	}
-	//	dividend *= 10
-	//}
-	//for {
-	//	num := byte(val / dividend)
-	//	if err := w.WriteByte('0' + num); err != nil {
-	//		return 0
-	//	}
-	//	len++
-	//	if dividend == 1 {
-	//		return
-	//	}
-	//	val %= dividend
-	//	dividend /= 10
-	//}
 }
 
 func readDecimal(r *bufio.Reader) (val int, len int) {
@@ -174,34 +139,6 @@ func readDecimal(r *bufio.Reader) (val int, len int) {
 		return 0, 0
 	}
 	return val, sb.Len()
-	//sign := 1
-	//// 读取一个byte
-	//b, err := r.ReadByte()
-	//if err != nil {
-	//	return 0, 0
-	//}
-	//len++
-	//// 如果是负数将标志置-1
-	//if b == '-' {
-	//	sign = -1
-	//	b, _ = r.ReadByte()
-	//	if err != nil {
-	//		return 0, 0
-	//	}
-	//	len++
-	//}
-	//for {
-	//	if !checkNum(b) {
-	//		if err = r.UnreadByte(); err != nil {
-	//			return 0, 0
-	//		}
-	//		len--
-	//		return sign * val, len
-	//	}
-	//	val = val*10 + int(b-'0')
-	//	b, _ = r.ReadByte()
-	//	len++
-	//}
 }
 
 func checkNum(data byte) bool {
@@ -231,10 +168,6 @@ func EncodeString(w io.Writer, val string) int {
 }
 
 func DecodeString(r io.Reader) (val string, err error) {
-	//br, ok := bufio.NewReader(r)
-	//if !ok {
-	//	br = bufio.NewReader(r)
-	//}
 	br := bufio.NewReader(r)
 	// 将冒号之前的表示的数字读出来
 	num, intLen := readDecimal(br)

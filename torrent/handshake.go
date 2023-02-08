@@ -26,6 +26,7 @@ func NewHandshakeMsg(infoSHA, peerId [IDLEN]byte) *HandshakeMsg {
 	}
 }
 
+// WriteHandshake HandshakeMsg ori:握手消息分为五块，1：指定第二段长度，2：什么协议，3：预留扩展，4：想要下载文件的hash，5：client id
 func WriteHandshake(w io.Writer, msg *HandshakeMsg) (int, error) {
 	// 1 byte for prelen,共68个byte
 	buf := make([]byte, len(msg.PreStr)+HsMsgLen+1)
@@ -53,8 +54,7 @@ func ReadHandshake(r io.Reader) (*HandshakeMsg, error) {
 
 	// 用于填充剩余协议的四部分
 	msgBuf := make([]byte, HsMsgLen+prelen)
-	_, err = io.ReadFull(r, msgBuf)
-	if err != nil {
+	if _, err = io.ReadFull(r, msgBuf); err != nil {
 		return nil, err
 	}
 

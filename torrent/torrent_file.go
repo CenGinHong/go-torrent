@@ -11,8 +11,8 @@ import (
 type rawInfo struct {
 	Length      int    `bencode:"length"`
 	Name        string `bencode:"name"`
-	PieceLength int    `bencode:"piece length"`
-	Pieces      string `bencode:"prices"`
+	PieceLength int    `bencode:"piece length"` // 对应的值是文件以字节为单位的每个分片的长度
+	Pieces      string `bencode:"pieces"`       // 将字节序列按 20 个字节为一组切分开, 则每组都是文件相对应 piece 的 SHA1 哈希值
 }
 
 type rawFile struct {
@@ -38,11 +38,12 @@ func ParseFile(r io.Reader) (*TorrentFile, error) {
 		fmt.Println("Fail to parse torrent file")
 		return nil, err
 	}
-	ret := new(TorrentFile)
-	ret.Announce = raw.Announce
-	ret.FileName = raw.Info.Name
-	ret.FileLen = raw.Info.Length
-	ret.PieceLen = raw.Info.PieceLength
+	ret := &TorrentFile{
+		Announce: raw.Announce,
+		FileName: raw.Info.Name,
+		FileLen:  raw.Info.Length,
+		PieceLen: raw.Info.PieceLength,
+	}
 
 	// 计算 info SHA
 	buf := new(bytes.Buffer)
@@ -54,9 +55,9 @@ func ParseFile(r io.Reader) (*TorrentFile, error) {
 	ret.InfoSHA = sha1.Sum(buf.Bytes())
 
 	// 计算 pieces SHA
+	// pieces在文件中读到
 	bys := []byte(raw.Info.Pieces)
 	cnt := len(bys) / SHALEN
-	// 看来pieces应该是文件直接得到的
 	hashes := make([][SHALEN]byte, cnt)
 	for i := 0; i < cnt; i++ {
 		copy(hashes[i][:], bys[i*SHALEN:(i+1)*SHALEN])
