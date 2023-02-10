@@ -3,7 +3,6 @@ package torrent
 import (
 	"bytes"
 	"crypto/sha1"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -92,26 +91,26 @@ const (
 )
 
 func Download(task *TorrentTask) error {
-	log.Printf("start downing %s", task.FileName)
-	taskQueue := make(chan *pieceTask, len(task.PieceSHA))
-	defer close(taskQueue)
+	log.Printf("start downing %s\n", task.FileName)
+	taskCh := make(chan *pieceTask, len(task.PieceSHA))
+	defer close(taskCh)
 	// 长度保持为1就好，即无缓存
-	resultQueue := make(chan *pieceResult)
-	defer close(resultQueue)
+	resultCh := make(chan *pieceResult)
+	defer close(resultCh)
 	for idx, sha := range task.PieceSHA {
 		// 拆分成小的pieceTask
 		begin, end := task.getPieceBounds(idx)
 		// 虽然分片长度固定，但最后一个可能会比较短
-		taskQueue <- &pieceTask{idx, sha, end - begin}
+		taskCh <- &pieceTask{idx, sha, end - begin}
 	}
 	for _, peer := range task.PeerList {
-		go task.peerRoutine(peer, taskQueue, resultQueue)
+		go task.peerRoutine(peer, taskCh, resultCh)
 	}
 	// 存下载数据，按道理是应该存于io文件，但是toy项目就存内存吧
 	buf := make([]byte, task.FileLen)
 	count := 0
 	for count < len(task.PieceSHA) {
-		res := <-resultQueue
+		res := <-resultCh
 		begin, end := task.getPieceBounds(res.index)
 		copy(buf[begin:end], res.data)
 		count++
@@ -120,18 +119,18 @@ func Download(task *TorrentTask) error {
 	}
 	file, err := os.Create(task.FileName)
 	if err != nil {
-		fmt.Println("fail to create file: " + task.FileName)
+		log.Println("fail to create file: " + task.FileName)
 		return err
 	}
 	_, err = file.Write(buf)
 	if err != nil {
-		fmt.Println("fail to write data")
+		log.Println("fail to write data")
 		return err
 	}
 	return nil
 }
 
-func (t *TorrentTask) peerRoutine(peer PeerInfo, taskQueue chan *pieceTask, resultQueue chan *pieceResult) {
+func (t *TorrentTask) peerRoutine(peer PeerInfo, taskCh chan *pieceTask, resultCh chan *pieceResult) {
 	// 建立连接
 	conn, err := NewConn(peer, t.InfoSHA, t.PeerId)
 	if err != nil {
@@ -143,34 +142,34 @@ func (t *TorrentTask) peerRoutine(peer PeerInfo, taskQueue chan *pieceTask, resu
 	}()
 	log.Printf("complete handshake with peer: %s\n", peer.IP.String())
 	// 写入信息
-	if _, err = conn.WriteMsg(&PeerMsg{MsgInterested, nil}); err != nil {
+	if _, err = conn.WriteMsg(&PeerMsg{MsgInterested, make([]byte, 0)}); err != nil {
 		log.Println("failed to write interest message")
 		return
 	}
-	for task := range taskQueue {
+	for task := range taskCh {
 		// 连接的peer没有这一片，放回channel
 		if !conn.Field.HasPiece(task.index) {
-			taskQueue <- task
+			taskCh <- task
 			continue
 		}
 		log.Printf("get task, index: %v, peer: %v\n", task.index, peer.IP.String())
 		res, err := downloadPiece(conn, task)
 		if err != nil {
-			taskQueue <- task
+			taskCh <- task
 			log.Printf("fail to download piece: %v\n", err)
 		}
 		if !checkPiece(task, res) {
-			taskQueue <- task
+			taskCh <- task
 			continue
 		}
-		resultQueue <- res
+		resultCh <- res
 	}
 }
 
 func checkPiece(task *pieceTask, res *pieceResult) bool {
 	sha := sha1.Sum(res.data)
 	if !bytes.Equal(task.sha[:], sha[:]) {
-		fmt.Printf("check integrity failed, index :%v\n", res.index)
+		log.Printf("check integrity failed, index :%v\n", res.index)
 		return false
 	}
 	return true

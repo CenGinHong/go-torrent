@@ -3,7 +3,7 @@ package torrent
 import (
 	"bufio"
 	"crypto/rand"
-	"fmt"
+	"log"
 	"os"
 	"testing"
 )
@@ -15,6 +15,6 @@ func TestTracker(t *testing.T) {
 	_, _ = rand.Read(peerId[:])
 	peers := FindPeers(tf, peerId)
 	for i, p := range peers {
-		fmt.Printf("Peer %d, Ip: %s, Port: %d\n", i+1, p.IP, p.Port)
+		log.Printf("Peer %d, Ip: %s, Port: %d\n", i+1, p.IP, p.Port)
 	}
 }
