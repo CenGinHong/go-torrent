@@ -77,7 +77,7 @@ func FindPeers(tf *TorrentFile, peerId [IDLEN]byte) []PeerInfo {
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	trackResp := new(TrackerResp)
+	trackResp := &TrackerResp{}
 	// 是bencode格式，需要unmarshal
 	if err = bencode.Unmarshal(resp.Body, trackResp); err != nil {
 		log.Printf("Tracker Response Error: %v\n", err)

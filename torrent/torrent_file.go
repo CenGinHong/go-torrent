@@ -3,9 +3,9 @@ package torrent
 import (
 	"bytes"
 	"crypto/sha1"
-	"fmt"
 	"go-torrent/bencode"
 	"io"
+	"log"
 )
 
 type rawInfo struct {
@@ -32,10 +32,10 @@ type TorrentFile struct {
 }
 
 func ParseFile(r io.Reader) (*TorrentFile, error) {
-	raw := new(rawFile)
+	raw := &rawFile{}
 	err := bencode.Unmarshal(r, raw)
 	if err != nil {
-		fmt.Println("Fail to parse torrent file")
+		log.Println("Fail to parse torrent file")
 		return nil, err
 	}
 	ret := &TorrentFile{
@@ -50,7 +50,7 @@ func ParseFile(r io.Reader) (*TorrentFile, error) {
 	// Marshal是不对的，应该要根据tag去做marshal
 	wlen := bencode.Marshal(buf, raw.Info)
 	if wlen == 0 {
-		fmt.Println("raw file info error")
+		log.Fatal("raw file info error")
 	}
 	ret.InfoSHA = sha1.Sum(buf.Bytes())
 

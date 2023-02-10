@@ -30,11 +30,16 @@ func NewHandshakeMsg(infoSHA, peerId [IDLEN]byte) *HandshakeMsg {
 func WriteHandshake(w io.Writer, msg *HandshakeMsg) (int, error) {
 	// 1 byte for prelen,共68个byte
 	buf := make([]byte, len(msg.PreStr)+HsMsgLen+1)
+	// 指定第二段长度
 	buf[0] = byte(len(msg.PreStr))
 	curr := 1
+	// 什么协议
 	curr += copy(buf[curr:], msg.PreStr)
+	// 预留扩展
 	curr += copy(buf[curr:], make([]byte, Reserved))
+	// 想要下载文件的hash
 	curr += copy(buf[curr:], msg.InfoSHA[:])
+	// client id
 	curr += copy(buf[curr:], msg.PeerId[:])
 	return w.Write(buf)
 }

@@ -31,7 +31,7 @@ type BValue interface{}
 
 type BObject struct {
 	type_ BType
-	val_  BValue // 可能是字符串，int, slice指针，k为string,v是bvalue的map
+	val_  BValue // 可能是字符串，int, slice指针，k为string, v是bvalue的map
 }
 
 func (o *BObject) Str() (string, error) {
@@ -216,6 +216,9 @@ func DecodeInt(r io.Reader) (val int, err error) {
 		br = bufio.NewReader(r)
 	}
 	b, err := br.ReadByte()
+	if err != nil {
+		return 0,err
+	}
 	if b != 'i' {
 		return val, ErrEpI
 	}

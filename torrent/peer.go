@@ -66,7 +66,7 @@ func handshake(conn net.Conn, infoSHA [SHALEN]byte, peerId [IDLEN]byte) error {
 	// 校验 HandshakeMsg
 	if !bytes.Equal(res.InfoSHA[:], infoSHA[:]) {
 		log.Println("check handshake failed")
-		return errors.New(fmt.Sprintf("handshake msg error： %s", string(res.InfoSHA[:])))
+		return fmt.Errorf("handshake msg error: %s", string(res.InfoSHA[:]))
 	}
 	return nil
 }
@@ -111,7 +111,7 @@ func fillBitfield(c *PeerConn) error {
 		return errors.New("expected bitfield")
 	}
 	if msg.Id != MsgBitfield {
-		return errors.New(fmt.Sprintf("expected bitfield, get :%s", strconv.Itoa(int(msg.Id))))
+		return fmt.Errorf("expected bitfield, get: %s", strconv.Itoa(int(msg.Id)))
 	}
 	log.Println("fill bitfield: " + c.peer.IP.String())
 	// 将位图拷进去
@@ -145,7 +145,7 @@ const lenBytes uint32 = 4
 func (c *PeerConn) WriteMsg(m *PeerMsg) (int, error) {
 	var buf []byte
 	if m == nil {
-		buf = make([]byte, lenBytes)
+		return 0, fmt.Errorf("msg cannot be nil")
 	}
 	length := uint32(len(m.Payload) + 1)
 	buf = make([]byte, lenBytes+length)
@@ -176,7 +176,7 @@ func GetHaveIndex(msg *PeerMsg) (int, error) {
 	return index, nil
 }
 
-// CopyPieceData 把信息拷贝到最后data里
+// CopyPieceData 把信息拷贝到task的data里
 func CopyPieceData(index int, buf []byte, msg *PeerMsg) (int, error) {
 	if msg.Id != MsgPiece {
 		return 0, fmt.Errorf("expected MsgPiece (Id %d), got Id %d", MsgPiece, msg.Id)
